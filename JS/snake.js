@@ -1,261 +1,277 @@
-//Constantes
+//Objetcts
 
-let DIRECCIONES = {
-    ARRIBA:1,
-    ABAJO:2,
-    IZQUIERDA:3,
-    DERECHA:4,    
-}
+const DIRECTIONS = {
+  UP: 1,
+  DOWN: 2,
+  LEFT: 3,
+  RIGHT: 4,
+};
 
-const juegoCanvas = document.getElementById("borde1");
-const puntosTexto = document.getElementById("Ptos");
-const ctx = juegoCanvas.getContext("2d");
-const cNintendo = document.getElementById("Nintendo");
-const rotacion = document.getElementById("Rotar");
-const boton = document.getElementById("cerrarB");
+//HTML
 
+const canvasGame = document.getElementById("Edge");
+const textPoints = document.getElementById("Points");
+const ctx = canvasGame.getContext("2d");
+const consoleNintendo = document.getElementById("Nintendo");
+const rotation = document.getElementById("Rotate");
+const button = document.getElementById("Close");
 
-let musicaF = new Audio ("../CSS/Sounds/Musica_de_snake.mp3");
-let sonidoPunto = new Audio ("../CSS/Sounds/ganaste_un_punto.wav");
-let gameO = new Audio ("../CSS/Sounds/GameOver.mp3");
+//Songs
 
-//Estados
+const backgroundSong = new Audio("../CSS/Sounds/Musica_de_snake.mp3");
+const pointSound = new Audio("../CSS/Sounds/ganaste_un_punto.wav");
+const youLost = new Audio("../CSS/Sounds/GameOver.mp3");
 
-let Musica1 = false;
+//States
 
-let serpientePos;
+let Song = false;
 
-let direccionActual;
-let nuevadireccion;
+let snakePosition;
 
-let comida;
+let currentDirection;
+let newDirection;
+
+let food;
 
 let FPS = 70;
 
-let ciclo;
+let cycle;
 
-let puntos;
+let points;
 
 //Dibujar Juego
 
-function rellenarCuadro(context, posX, posY, ){
-    ctx.beginPath();
-    ctx.fillStyle = "#00FF00";
-    ctx.fillRect(posX, posY, 20, 20);
-    ctx.stroke();
-}
+const fillBox = (ctx, PositionX, PositionY) => {
+  ctx.beginPath();
+  ctx.fillStyle = "#00FF00";
+  ctx.fillRect(PositionX, PositionY, 20, 20);
+  ctx.stroke();
+};
 
-function rellenarComida(context, posX, posY, ){
-    ctx.beginPath();
-    ctx.fillStyle = "red";
-    ctx.fillRect(posX, posY, 20, 20);
-    ctx.stroke();
-}
+const fillFood = (ctx, PositionX, PositionY) => {
+  ctx.beginPath();
+  ctx.fillStyle = "red";
+  ctx.fillRect(PositionX, PositionY, 20, 20);
+  ctx.stroke();
+};
 
-function serpiente(contextS,serpientePos){
-    for(let i = 0; i < serpientePos.length; i++){
-    rellenarCuadro(contextS, serpientePos[i].posX, serpientePos[i].posY)
+const snake = (context, snakePosition) => {
+  for (possnake of snakePosition) {
+    fillBox(context, possnake.PositionX, possnake.PositionY);
+  }
+};
+
+const drawFood = (context, food) => {
+  fillFood(context, food.PositionX, food.PositionY, 20, 20);
+};
+
+const drawWalls = (context) => {
+  context.beginPath();
+  context.lineWidth = 2;
+  context.strokeStyle = "white";
+  context.rect(20, 20, 560, 560);
+  context.stroke();
+};
+
+const drawText = (context, text, PositionX, PositionY) => {
+  context.font = "30px Arial";
+  context.textAlign = "center";
+  context.fillStyle = "white";
+  context.fillText(text, PositionX, PositionY);
+};
+
+//Movimiento snake
+
+const moveSnake = (direccion, snakePosition) => {
+  let headPositionX = snakePosition[0].PositionX;
+  let headPositionY = snakePosition[0].PositionY;
+
+  if (direccion === DIRECTIONS.RIGHT) {
+    headPositionX += 20;
+  } else if (direccion === DIRECTIONS.LEFT) {
+    headPositionX -= 20;
+  } else if (direccion === DIRECTIONS.UP) {
+    headPositionY -= 20;
+  } else if (direccion === DIRECTIONS.DOWN) {
+    headPositionY += 20;
+  }
+
+  snakePosition.unshift({ PositionX: headPositionX, PositionY: headPositionY });
+  return snakePosition.pop();
+};
+
+const snakeAte = (snakePosition, food) => {
+  return (
+    snakePosition[0].PositionX === food.PositionX && snakePosition[0].PositionY === food.PositionY
+  );
+};
+
+//food
+
+const generateFood = () => {
+  while (true) {
+    const columnaX = Math.floor(Math.random() * 29) + 1
+    const columnaY = Math.floor(Math.random() * 29) +1
+
+    const PositionX = columnaX * 20;
+    const PositionY = columnaY * 20;
+
+    let crashes = false;
+    for (positionSnake of snakePosition) {
+      if (positionSnake.PositionX === PositionX && positionSnake.PositionY === PositionY) {
+        crashes = true;
+        break;
+      }
     }
-}
 
-function dibujarComida(context, comida){
-    rellenarComida(context, comida.posX, comida.posY, 20, 20);
-}
-
-function dibujarParedes(context){
-    context.beginPath();
-    context.lineWidth = 2;
-    context.strokeStyle = "white";
-    context.rect(20,20,560,560);
-    context.stroke();
-}
-
-function dibujarTexto(context, texto, x, y){
-    context.font = "30px Arial";
-    context.textAlign = "center";
-    context.fillStyle = "white";
-    context.fillText (texto, x, y);
-}
-
-
-//Movimiento Serpiente
-
-function moverSerpiente(direccion,serpientePos){
-    let cabezaPosX = serpientePos[0].posX;
-    let cabezaPosY = serpientePos[0].posY;
-
-    if(direccion === DIRECCIONES.DERECHA){
-        cabezaPosX += 20;
-    } else if(direccion === DIRECCIONES.IZQUIERDA){
-        cabezaPosX -= 20;
-    } else if(direccion === DIRECCIONES.ARRIBA){
-        cabezaPosY -= 20;
-    } else if(direccion === DIRECCIONES.ABAJO){
-        cabezaPosY += 20;
+    if (crashes === true) {
+      continue;
     }
 
-    serpientePos.unshift( {posX: cabezaPosX, posY: cabezaPosY } );
-    return serpientePos.pop();
-}
-
-function serpientecomio(serpientePos, comida){
-    return serpientePos[0].posX === comida.posX && serpientePos[0].posY === comida.posY;
-}
-
-//Comida
-
-function generarcomida(serpiente){
-    while(true){
-        let columnaX = Math.max(Math.floor(Math.random() * 29), 1);
-        let columnaY = Math.max(Math.floor(Math.random() * 29), 1);
-
-        let posX = columnaX * 20;
-        let posY = columnaY * 20;
-    
-        let choqueS = false;
-        for(let i =0; i < serpiente.length; i++){
-            if(serpiente[i].posX === posX && serpiente[i].posY === posY){
-                choqueS = true;
-                break;
-            }
-        }
-
-        if(choqueS === true){
-            continue;
-        }
-
-        return{posX: posX, posY: posY};
-    }
-}
+    return { PositionX: PositionX, PositionY: PositionY };
+  }
+};
 
 //ocurrio una colision
 
-function Chocaste(serpientePos){
-    let cabeza = serpientePos[0];
+const crashed = (snakePosition) => {
+  let head = snakePosition[0];
 
-    if(cabeza.posX < 20 || cabeza.posY < 20 || cabeza.posX > 560 || cabeza.posY > 560){
-        console.log ("Perdiste");
-        return true;
-    }
+  if (
+    head.PositionX < 20 ||
+    head.PositionY < 20 ||
+    head.PositionX > 560 ||
+    head.PositionY > 560
+  ) {
+    console.log("Perdiste");
+    return true;
+  }
 
-    if(serpientePos.length < 5){
-        return false;
-    }
-
-    for(let i = 1; i < serpientePos.length; i++){
-        if(cabeza.posX === serpientePos[i].posX && cabeza.posY === serpientePos[i].posY){
-            return true;
-        }
-    }
-
+  if (snakePosition.length < 5) {
     return false;
+  }
 
-}
+  for (let i = 1; i < snakePosition.length; i++) {
+    if (
+      head.PositionX === snakePosition[i].PositionX &&
+      head.PositionY === snakePosition[i].PositionY
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 //Musicas
 
-function MusicaFondo(){
-    if(Musica1 === false){
-        musicaF.loop = true;
-        musicaF.play();
-    }
-}
+const backgroundSongs = () => {
+  if (Song === false) {
+    backgroundSong.loop = true;
+    backgroundSong.play();
+  }
+};
 
 //Resoluciones
 
-window.addEventListener("orientationchange",function(){
-    rotacion.classList.remove("esconder");
+window.addEventListener("orientationchange", () => {
+  rotation.classList.remove("Hide");
 });
 
-boton.addEventListener("click",function(){
-    rotacion.classList.add("esconder");
+button.addEventListener("click", () => {
+  rotation.classList.add("Hide");
 });
 
-//Ciclo del juego
+//cycle del juego
 
-document.addEventListener("keydown",function(e){
-
- if(e.code === "ArrowUp" && direccionActual !== DIRECCIONES.ABAJO){
-    nuevadireccion = DIRECCIONES.ARRIBA;
- } else if(e.code === "ArrowDown" && direccionActual !== DIRECCIONES.ARRIBA){
-    nuevadireccion = DIRECCIONES.ABAJO;
- } else if(e.code === "ArrowLeft" && direccionActual !== DIRECCIONES.DERECHA){
-    nuevadireccion = DIRECCIONES.IZQUIERDA;
- }else if(e.code === "ArrowRight" && direccionActual !== DIRECCIONES.IZQUIERDA){
-    nuevadireccion = DIRECCIONES.DERECHA;
- }
+document.addEventListener("keydown", (event) => {
+  if (event.code === "ArrowUp" && currentDirection !== DIRECTIONS.DOWN) {
+    newDirection = DIRECTIONS.UP;
+  } else if (event.code === "ArrowDown" && currentDirection !== DIRECTIONS.UP) {
+    newDirection = DIRECTIONS.DOWN;
+  } else if (
+    event.code === "ArrowLeft" &&
+    currentDirection !== DIRECTIONS.RIGHT
+  ) {
+    newDirection = DIRECTIONS.LEFT;
+  } else if (
+    event.code === "ArrowRight" &&
+    currentDirection !== DIRECTIONS.LEFT
+  ) {
+    newDirection = DIRECTIONS.RIGHT;
+  }
 });
 
-function ciclodejuego(){
-    let cola = moverSerpiente(nuevadireccion, serpientePos);
-    direccionActual = nuevadireccion;
+const gameCycle = () => {
+  let tail = moveSnake(newDirection, snakePosition);
+  currentDirection = newDirection;
 
-    if(serpientecomio(serpientePos, comida)){
-        serpientePos.push(cola);
-        comida = generarcomida(serpientePos);
-        puntos++;
-        puntosTexto.innerText = "PUNTOS: " + puntos;
-        sonidoPunto.play();
-    }
+  if (snakeAte(snakePosition, food)) {
+    snakePosition.push(tail);
+    food = generateFood();
+    points++;
+    textPoints.innerText = "PUNTOS: " + points;
+    pointSound.play();
+  }
 
-    if(Chocaste(serpientePos)){
-        gameOver()
-        return;
-    }
-
-    ctx.clearRect(0,0,600,600);
-    dibujarParedes(ctx);
-    serpiente(ctx,serpientePos);
-    dibujarComida(ctx, comida);
-}
-
-function gameOver(){
-    ciclo = clearInterval(ciclo);
-    musicaF.pause();
-    musicaF.loop = false;
-    gameO.play();
-    dibujarTexto(ctx, "¡Has perdido!", 300, 260);
-    dibujarTexto(ctx, "¡Pulsa click para volver a empezar!", 300, 310);
-    cNintendo.classList.add("shake-horizontal");
-}
-
-function Reinicio(){
-    serpientePos = [
-        { posX: 60, posY: 40},
-        { posX: 60, posY: 20},
-        { posX: 40, posY: 20},
-        { posX: 20, posY: 20},
-       ];
-       puntos = 0;
-       direccionActual = DIRECCIONES.ABAJO;
-       nuevadireccion = DIRECCIONES.ABAJO;
-       puntosTexto.innerText = "PUNTOS: " + puntos; 
-       MusicaFondo();
-       cNintendo.classList.remove("shake-horizontal");
-
-       comida = generarcomida(serpientePos);
-       
-       ciclo = setInterval(ciclodejuego, FPS);
-}
-
-dibujarTexto(ctx, "¡Pulsa click izquierdo para empezar!", 300, 260);
-dibujarTexto(ctx, "Desktop: ¡Muevete con ↑ ↓ → ←!", 300, 310);
-dibujarTexto(ctx, "Mobil: ¡Pulsa con Tab para girar!", 300, 360);
-dibujarParedes(ctx);
-
-juegoCanvas.addEventListener("click", function(){
-    if(ciclo === undefined){
-    Reinicio();
+  if (crashed(snakePosition)) {
+    gameOver();
     return;
-    }
+  }
 
-    if(direccionActual === DIRECCIONES.ABAJO){
-        nuevadireccion = DIRECCIONES.IZQUIERDA;
-    }else if(direccionActual === DIRECCIONES.IZQUIERDA){
-        nuevadireccion = DIRECCIONES.ARRIBA;
-    }else if(direccionActual === DIRECCIONES.ARRIBA){
-        nuevadireccion = DIRECCIONES.DERECHA;
-    }else if(direccionActual === DIRECCIONES.DERECHA){
-        nuevadireccion = DIRECCIONES.ABAJO;
-    }
+  ctx.clearRect(0, 0, 600, 600);
+  drawWalls(ctx);
+  snake(ctx, snakePosition);
+  drawFood(ctx, food);
+}
+
+const gameOver = () => {
+  cycle = clearInterval(cycle);
+  backgroundSong.pause();
+  backgroundSong.loop = false;
+  youLost.play();
+  drawText(ctx, "¡Has perdido!", 300, 260);
+  drawText(ctx, "¡Pulsa click para volver a empezar!", 300, 310);
+  consoleNintendo.classList.add("shake-horizontal");
+}
+
+const reboot = () => {
+  snakePosition = [
+    { PositionX: 60, PositionY: 40 },
+    { PositionX: 60, PositionY: 20 },
+    { PositionX: 40, PositionY: 20 },
+    { PositionX: 20, PositionY: 20 },
+  ];
+  points = 0;
+  currentDirection = DIRECTIONS.DOWN;
+  newDirection = DIRECTIONS.DOWN;
+  textPoints.innerText = "PUNTOS: " + points;
+  backgroundSongs();
+  consoleNintendo.classList.remove("shake-horizontal");
+
+  food = generateFood();
+
+  cycle = setInterval(gameCycle, FPS);
+}
+
+drawText(ctx, "¡Pulsa click izquierdo para empezar!", 300, 260);
+drawText(ctx, "Desktop: ¡Muevete con ↑ ↓ → ←!", 300, 310);
+drawText(ctx, "Mobil: ¡Pulsa con Tab para girar!", 300, 360);
+drawWalls(ctx);
+
+canvasGame.addEventListener("click", () => {
+  if (cycle === undefined) {
+    reboot();
+    return;
+  }
+
+  if (currentDirection === DIRECTIONS.DOWN) {
+    newDirection = DIRECTIONS.LEFT;
+  } else if (currentDirection === DIRECTIONS.LEFT) {
+    newDirection = DIRECTIONS.UP;
+  } else if (currentDirection === DIRECTIONS.UP) {
+    newDirection = DIRECTIONS.RIGHT;
+  } else if (currentDirection === DIRECTIONS.RIGHT) {
+    newDirection = DIRECTIONS.DOWN;
+  }
 });
